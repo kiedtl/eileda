@@ -6,14 +6,21 @@ use sdl2::keyboard::Keycode;
 use std::time::Duration;
 
 mod uf2;
+mod md;
 
 pub fn main() {
-    let chicago = uf2::parse(uf2::CHICAGO12);
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() != 2 {
+        eprintln!("Usage: {} file.eimd", args[0]);
+        return;
+    }
+
+    let Some(stuff) = md::parse(&args[1]) else { return; };
 
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
-    let window = video_subsystem.window("eileda", 640, 360)
+    let window = video_subsystem.window("eileda", 1440, 810)
         .position_centered()
         .build()
         .unwrap();
@@ -25,14 +32,12 @@ pub fn main() {
     canvas.clear();
     canvas.present();
     canvas.set_draw_color(Color::RGB(0, 0, 0));
-    uf2::draw_string(&mut canvas, &chicago, 0, 0, "This is a test.\nHello world!");
+
+            println!("{:#?}", stuff);
+    md::draw(&mut canvas, &stuff, 0, 0, 0, md::DrawFl::NONE);
 
     let mut event_pump = sdl_context.event_pump().unwrap();
-    let mut i = 0;
     'running: loop {
-        i = (i + 1) % 255;
-        //canvas.set_draw_color(Color::RGB(i, 64, 255 - i));
-        //canvas.clear();
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit {..} |
@@ -42,7 +47,6 @@ pub fn main() {
                 _ => {}
             }
         }
-        // The rest of the game loop goes here...
 
         canvas.present();
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));

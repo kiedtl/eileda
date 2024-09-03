@@ -4,5 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-sdl2 = "0.37.0"
-bitmaps = "3.2.1"
+sdl2 = "0.37"
+bitmaps = "3.2"
+paste = "1.0"
+markdown = "1.0.0-alpha.20"
+bitflags = "2.5"
