@@ -117,21 +117,39 @@ pub fn draw_char<const XS: usize>(
     }
 }
 
+pub fn measure<const XS: usize>(font: &Ufx<XS>, text: &str) -> usize {
+    text.as_bytes()
+        .into_iter()
+        .fold(0, |w, b| w + font.glyphs[*b as usize].width as usize)
+}
+
+
 pub fn draw<const XS: usize>(
-    canvas: &mut WindowCanvas, font: &Ufx<XS>, lx: usize, sx: usize, sy: usize, s: &str
+    canvas: &mut WindowCanvas, font: &Ufx<XS>, lx: usize, ex: usize, sx: usize, sy: usize, s: &str
 ) -> (usize, usize)
 {
+    #[allow(non_snake_case)]
+    let X = (XS as f64).sqrt() as usize;
+
     let mut x = sx;
     let mut y = sy;
-    for ch in s.as_bytes() {
-        if *ch == b'\n' {
-            y += 16;
+
+    for group in s.split_inclusive(&[' ', '\n']) {
+        if x + measure(font, group) >= ex {
+            y += 8 * X;
             x = lx;
-            continue;
         }
 
-        draw_char(canvas, font, x, y, *ch);
-        x += font.glyphs[*ch as usize].width as usize;
+        for ch in group.as_bytes() {
+            if *ch == b'\n' {
+                y += 8 * X;
+                x = lx;
+                continue;
+            }
+
+            draw_char(canvas, font, x, y, *ch);
+            x += font.glyphs[*ch as usize].width as usize;
+        }
     }
 
     (x, y)

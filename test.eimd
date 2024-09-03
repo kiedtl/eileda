@@ -1,9 +1,11 @@
-# Test
+.PAD 24
+
+# Lorem ipsum
 
 Hi **there**! How *are* you!
 This is another test.
 
-This should be on **another** line...
+This should be on **another** line... But this line is a very very very long line that must be wrapped somehow, automatically, without any issues.
 
 1. Lists
 3. Unordered list
@@ -12,9 +14,10 @@ This should be on **another** line...
 
 Here are the planned directive:
 
-- .PAD
-- .GRD
-- .COL [1|2]
-- .IMG
+- .PAD \<num> (slide: padding)
+- .GRD \<___> (slide: grid layout)
+- .AUT \<txt> (author of quote)
+- .COL \<1|2> (set column)
+- .IMG \<pth> (image)
 
 And here's a paragraph afterwards.

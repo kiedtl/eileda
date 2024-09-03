@@ -15,12 +15,12 @@ pub fn main() {
         return;
     }
 
-    let Some(stuff) = md::parse(&args[1]) else { return; };
+    let stuff = md::parse(&args[1]);
 
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
-    let window = video_subsystem.window("eileda", 1440, 810)
+    let window = video_subsystem.window("eileda", 960, 740) //1440, 810)
         .position_centered()
         .build()
         .unwrap();
@@ -33,8 +33,8 @@ pub fn main() {
     canvas.present();
     canvas.set_draw_color(Color::RGB(0, 0, 0));
 
-            println!("{:#?}", stuff);
-    md::draw(&mut canvas, &stuff, 0, 0, 0, md::DrawFl::NONE);
+    //println!("{:#?}", stuff);
+    md::draw(&mut canvas, stuff);
 
     let mut event_pump = sdl_context.event_pump().unwrap();
     'running: loop {
