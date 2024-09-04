@@ -53,7 +53,6 @@ impl<'a> Presentation<'a> {
         let ey = 640 / 2 - self.config.padding;
 
         draw_content(canvas, &self.slides[slide].content, lx, ex, sy, ey);
-        canvas.present();
     }
 }
 
