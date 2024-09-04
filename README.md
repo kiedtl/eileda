@@ -9,7 +9,7 @@ This is an experimental slideshow program built for personal use, inspired by
 
 ## Why?
 
-<img align="right" width="40%" src="https://0x0.st/XwQE.gif" />
+<img align="right" width="40%" style="float: left; padding-left: 20px" src="https://0x0.st/XwQE.gif" />
 
 I created this mostly because I'm attracted to the idea of extremely simple,
 barebones presentation software, such as suckless' sent or adelie, but would
