@@ -12,6 +12,9 @@ pub enum Item {
     Pad(usize),
     Md(markdown::mdast::Node),
     Img(PathBuf),
+    BeginGrid(usize),
+    NextColumn,
+    EndGrid,
 }
 
 pub fn lex(file: &str) -> Vec<Item> {
@@ -44,6 +47,20 @@ pub fn lex(file: &str) -> Vec<Item> {
                 ".IMG" if cmd.len() == 2 => {
                     items.push(Item::Img(PathBuf::from(cmd[1])));
                 },
+                ".GRD" => if cmd.len() <= 2 {
+                    if cmd.len() == 1 {
+                        items.push(Item::BeginGrid(50));
+                    } else if let Ok(rat) = cmd[1].parse() {
+                        items.push(Item::BeginGrid(rat));
+                    } else if cmd[1] == "end" {
+                        items.push(Item::EndGrid);
+                    } else {
+                        eprintln!("Error: Bad grid directive");
+                    }
+                },
+                ".COL" => if cmd.len() == 1 {
+                    items.push(Item::NextColumn);
+                }
                 c => eprintln!("Error: Unknown or invalid directive: {}", c),
             }
         } else {
@@ -65,6 +82,26 @@ pub fn parse<'a>(tcreator: &'a TextureCreator<WindowContext>, items: &Vec<Item>)
         slides: Vec::new(),
     };
 
+    let _push = |p: &mut Presentation<'a>, content: Content<'a>| {
+        let slide_last_idx = p.slides.len() - 1;
+
+        if p.slides[slide_last_idx].content.len() == 0 {
+            p.slides[slide_last_idx].content.push(content);
+            return;
+        }
+
+        let content_last_idx = p.slides[slide_last_idx].content.len() - 1;
+        match p.slides[slide_last_idx].content[content_last_idx] {
+            Content::Grid(Grid { ref mut first, _parser_col_adv, .. }) if _parser_col_adv == false => {
+                first.push(content);
+            }
+            Content::Grid(Grid { ref mut second, _parser_col_adv, .. }) if _parser_col_adv == true => {
+                second.push(content);
+            }
+            _ => p.slides[slide_last_idx].content.push(content),
+        }
+    };
+
     for item in items.into_iter() {
         if p.slides.len() == 0 {
             match item {
@@ -73,12 +110,31 @@ pub fn parse<'a>(tcreator: &'a TextureCreator<WindowContext>, items: &Vec<Item>)
                 _ => eprintln!("Unexpected headers: {:?}", item),
             }
         } else {
-            let last = p.slides.len() - 1;
+            let slide_last_idx = p.slides.len() - 1;
 
             match item {
                 Item::BeginSlide => p.slides.push(Slide { content: Vec::new() }),
-                Item::Md(md) => p.slides[last].content.push(Content::Md(md.clone())),
-                Item::Img(path) => p.slides[last].content.push(Content::Img(
+                Item::BeginGrid(r) => _push(&mut p, Content::Grid(Grid {
+                    ratio: *r,
+                    first: Vec::new(),
+                    second: Vec::new(),
+                    _parser_col_adv: false,
+                })),
+                Item::NextColumn => {
+                    let content_last_idx = p.slides[slide_last_idx].content.len() - 1;
+                    match p.slides[slide_last_idx].content[content_last_idx] {
+                        Content::Grid(Grid { ref mut _parser_col_adv, .. }) => {
+                            if *_parser_col_adv == true {
+                                eprintln!("Error: Spurious .COL directives");
+                            }
+                            *_parser_col_adv = true;
+                        },
+                        _ => eprintln!("Error: Spurious .COL directives (no parent)"),
+                    }
+                },
+                Item::EndGrid => p.slides[slide_last_idx].content.push(Content::Dummy),
+                Item::Md(md) => _push(&mut p, Content::Md(md.clone())),
+                Item::Img(path) => _push(&mut p, Content::Img(
                     match tcreator.load_texture(path) {
                         Ok(t) => t,
                         Err(s) => {

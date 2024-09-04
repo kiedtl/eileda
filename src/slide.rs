@@ -7,6 +7,11 @@ use sdl2::render::Texture;
 use sdl2::rect::Rect;
 use sdl2::pixels::Color;
 
+const PAR_PAD: usize = 12;
+const LST_MAR: usize = 8;
+const IMG_SPC: usize = 12;
+const COL_SPC: usize = 12;
+
 #[derive(Copy, Clone, Debug)]
 pub struct GlobalConfig {
     pub padding: usize,
@@ -22,8 +27,18 @@ pub struct Slide<'a> {
 }
 
 pub enum Content<'a> {
+    Grid(Grid<'a>),
     Md(markdown::mdast::Node),
     Img(Texture<'a>),
+    Dummy,
+}
+
+pub struct Grid<'a> {
+    pub ratio: usize,
+    pub first: Vec<Content<'a>>,
+    pub second: Vec<Content<'a>>,
+
+    pub _parser_col_adv: bool,
 }
 
 impl<'a> Presentation<'a> {
@@ -34,40 +49,10 @@ impl<'a> Presentation<'a> {
 
         let lx = self.config.padding;
         let ex = 960 / 2 - self.config.padding;
+        let sy = self.config.padding;
         let ey = 640 / 2 - self.config.padding;
 
-        let mut y = self.config.padding;
-
-        for item in &self.slides[slide].content {
-            match item {
-                Content::Img(t) => {
-                    let (iw, ih) = (t.query().width, t.query().height); // image w/h
-                    let (mw, mh) = ((ex - lx) as _, (ey - y) as _); // max w/h
-                    let (cw, ch); // calculated w/h
-
-                    // Scale image down into boundaries, depending on which dimension
-                    // (height/width) is over bounds most
-                    if iw < mw && ih < mh {
-                        cw = iw;
-                        ch = ih;
-                    } else if iw.saturating_sub(mw) > ih.saturating_sub(mh) {
-                        cw = mw;
-                        ch = (ih as f32 * (mw as f32 / iw as f32)) as u32;
-                    } else {
-                        ch = mh;
-                        cw = (iw as f32 * (mh as f32 / ih as f32)) as u32;
-                    }
-
-                    let dst = Rect::new(lx as _, y as _, cw, ch);
-                    canvas.copy(t, None, Some(dst)).unwrap();
-                },
-                Content::Md(md) => {
-                    let (_, ny) = draw_node(canvas, &md, lx, ex, lx, y, DrawFl::NONE);
-                    y = ny;
-                },
-            }
-        }
-
+        draw_content(canvas, &self.slides[slide].content, lx, ex, sy, ey);
         canvas.present();
     }
 }
@@ -82,6 +67,59 @@ bitflags! {
     }
 }
 
+fn draw_content<'a>(
+    canvas: &mut WindowCanvas,
+    content: &Vec<Content<'a>>,
+    lx: usize,
+    ex: usize,
+    sy: usize,
+    ey: usize,
+) -> usize
+{
+    let mut y = sy;
+
+    for item in content {
+        match item {
+            Content::Dummy => (),
+            Content::Grid(Grid { ratio, first, second, .. }) => {
+                let bx = lx + ((ex - lx) * ratio / 100);
+                let y1 = draw_content(canvas, first, lx, bx, y, ey);
+                let y2 = draw_content(canvas, second, bx + COL_SPC, ex, y, ey);
+                y = y1.max(y2);
+            },
+            Content::Img(t) => {
+                let (iw, ih) = (t.query().width, t.query().height); // image w/h
+                let (mw, mh) = ((ex - lx) as _, (ey - y) as _); // max w/h
+                let (cw, ch); // calculated w/h
+
+                // Scale image down into boundaries, depending on which dimension
+                // (height/width) is over bounds most
+                if iw < mw && ih < mh {
+                    cw = iw;
+                    ch = ih;
+                } else if iw.saturating_sub(mw) > ih.saturating_sub(mh) {
+                    cw = mw;
+                    ch = (ih as f32 * (mw as f32 / iw as f32)) as u32;
+                } else {
+                    ch = mh;
+                    cw = (iw as f32 * (mh as f32 / ih as f32)) as u32;
+                }
+
+                let dst = Rect::new(lx as _, y as _, cw, ch);
+                canvas.copy(t, None, Some(dst)).unwrap();
+
+                y += ih as usize + IMG_SPC;
+            },
+            Content::Md(md) => {
+                let (_, ny) = draw_node(canvas, &md, lx, ex, lx, y, DrawFl::NONE);
+                y = ny;
+            },
+        }
+    }
+
+    y
+}
+
 fn draw_node(
     canvas: &mut WindowCanvas,
     node: &markdown::mdast::Node,
@@ -92,9 +130,6 @@ fn draw_node(
     fl: DrawFl,
 ) -> (usize, usize)
 {
-    const PAR_PAD: usize = 12;
-    const LST_MAR: usize = 8;
-
     use markdown::mdast::*;
     use markdown::mdast::Node as N;
 

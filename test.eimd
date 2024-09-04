@@ -1,5 +1,5 @@
 .PAD 24
-
+.SLD
 # Lorem ipsum
 
 Hi **there**! How *are* you!
@@ -7,17 +7,46 @@ This is another test.
 
 This should be on **another** line... But this line is a very very very long line that must be wrapped somehow, automatically, without any issues.
 
+.SLD
+# TODO
+
 1. Lists
 3. Unordered list
    - Don't forget ordered lists!
 2. Blockquotes
 
-Here are the planned directive:
+.SLD
+# Roadmap
 
+Here are some of the planned directives:
+
+- .SLD (next slide)
 - .PAD \<num> (slide: padding)
-- .GRD \<___> (slide: grid layout)
+- .GRD \<rat> (slide: grid layout)
 - .AUT \<txt> (author of quote)
-- .COL \<1|2> (set column)
+- .COL (next column)
 - .IMG \<pth> (image)
+- .COL \<elm> \<color>
+  - Where \<elm> is one of *header*, *text*
+- .FNT \<cls> \<name>
+  - Where \<cls> is one of *header*, *text*, *bold*, *emph*, *boldemph*
 
 And here's a paragraph afterwards.
+
+.SLD
+
+Some text on top.
+
+.GRD 40
+.IMG test.png
+.COL
+Here's some text on the other side of the image. Look at the goblins!
+
+List of roguelikes:
+- Cogmind
+- The Ground Gives Way
+- Dungeon Crawl: *Stone Soup*
+- Harmonist
+.GRD end
+
+Some text afterwards.
