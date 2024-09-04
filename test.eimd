@@ -26,7 +26,7 @@ Here are some of the planned directives:
 - .AUT \<txt> (author of quote)
 - .COL (next column)
 - .IMG \<pth> (image)
-- .COL \<elm> \<color>
+- .CLR \<elm> \<color>
   - Where \<elm> is one of *header*, *text*
 - .FNT \<cls> \<name>
   - Where \<cls> is one of *header*, *text*, *bold*, *emph*, *boldemph*
