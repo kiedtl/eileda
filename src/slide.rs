@@ -2,10 +2,10 @@ use crate::uf2;
 
 use bitflags::bitflags;
 use markdown;
-use sdl2::render::WindowCanvas;
-use sdl2::render::Texture;
-use sdl2::rect::Rect;
 use sdl2::pixels::Color;
+use sdl2::rect::Rect;
+use sdl2::render::Texture;
+use sdl2::render::WindowCanvas;
 
 const PAR_PAD: usize = 12;
 const LST_MAR: usize = 8;
@@ -74,19 +74,23 @@ fn draw_content<'a>(
     ex: usize,
     sy: usize,
     ey: usize,
-) -> usize
-{
+) -> usize {
     let mut y = sy;
 
     for item in content {
         match item {
             Content::Dummy => (),
-            Content::Grid(Grid { ratio, first, second, .. }) => {
+            Content::Grid(Grid {
+                ratio,
+                first,
+                second,
+                ..
+            }) => {
                 let bx = lx + ((ex - lx) * ratio / 100);
                 let y1 = draw_content(canvas, first, lx, bx, y, ey);
                 let y2 = draw_content(canvas, second, bx + COL_SPC, ex, y, ey);
                 y = y1.max(y2);
-            },
+            }
             Content::Img(t) => {
                 let (iw, ih) = (t.query().width, t.query().height); // image w/h
                 let (mw, mh) = ((ex - lx) as _, (ey - y) as _); // max w/h
@@ -109,11 +113,11 @@ fn draw_content<'a>(
                 canvas.copy(t, None, Some(dst)).unwrap();
 
                 y += ih as usize + IMG_SPC;
-            },
+            }
             Content::Md(md) => {
                 let (_, ny) = draw_node(canvas, &md, lx, ex, lx, y, DrawFl::NONE);
                 y = ny;
-            },
+            }
         }
     }
 
@@ -128,10 +132,9 @@ fn draw_node(
     sx: usize,
     sy: usize,
     fl: DrawFl,
-) -> (usize, usize)
-{
-    use markdown::mdast::*;
+) -> (usize, usize) {
     use markdown::mdast::Node as N;
+    use markdown::mdast::*;
 
     let mut x = sx;
     let mut y = sy;
@@ -145,14 +148,14 @@ fn draw_node(
     };
 
     match node {
-        N::Root(Root{ children, .. }) => {
+        N::Root(Root { children, .. }) => {
             for c in children {
                 let (nx, ny) = draw_node(canvas, c, lx, ex, x, y, fl);
                 x = nx;
                 y = ny;
             }
             x = sx;
-        },
+        }
         N::Paragraph(Paragraph { children, .. }) => {
             for c in children {
                 let (nx, ny) = draw_node(canvas, c, lx, ex, x, y, fl);
@@ -162,8 +165,10 @@ fn draw_node(
             x = sx;
             y += 2 * 8;
             y += PAR_PAD;
-        },
-        N::Heading(Heading { children, depth: _, .. }) => {
+        }
+        N::Heading(Heading {
+            children, depth: _, ..
+        }) => {
             for c in children {
                 let (nx, ny) = draw_node(canvas, c, lx, ex, x, y, fl | DrawFl::HEADER);
                 x = nx;
@@ -172,18 +177,28 @@ fn draw_node(
             x = sx;
             y += 5 * 8;
             y += PAR_PAD;
-        },
-        N::Strong(Strong { children, .. }) => for c in children {
-            let (nx, ny) = draw_node(canvas, c, lx, ex, x, y, fl | DrawFl::BOLD);
-            x = nx;
-            y = ny;
-        },
-        N::Emphasis(Emphasis { children, .. }) => for c in children {
-            let (nx, ny) = draw_node(canvas, c, lx, ex, x, y, fl | DrawFl::EMPH);
-            x = nx;
-            y = ny;
-        },
-        N::List(List { children, ordered, start, spread: _, .. }) => {
+        }
+        N::Strong(Strong { children, .. }) => {
+            for c in children {
+                let (nx, ny) = draw_node(canvas, c, lx, ex, x, y, fl | DrawFl::BOLD);
+                x = nx;
+                y = ny;
+            }
+        }
+        N::Emphasis(Emphasis { children, .. }) => {
+            for c in children {
+                let (nx, ny) = draw_node(canvas, c, lx, ex, x, y, fl | DrawFl::EMPH);
+                x = nx;
+                y = ny;
+            }
+        }
+        N::List(List {
+            children,
+            ordered,
+            start,
+            spread: _,
+            ..
+        }) => {
             for (i, c) in children.iter().enumerate() {
                 let o;
                 if !*ordered {
@@ -193,7 +208,15 @@ fn draw_node(
                         + uf2::FONT_NEWYORK14.glyphs[0x20].width as usize;
                 } else {
                     let l = &format!("{}) ", start.unwrap_or(1) as usize + i);
-                    uf2::draw(canvas, &*uf2::FONT_NEWYORK14, lx + LST_MAR, ex, x + LST_MAR, y, l);
+                    uf2::draw(
+                        canvas,
+                        &*uf2::FONT_NEWYORK14,
+                        lx + LST_MAR,
+                        ex,
+                        x + LST_MAR,
+                        y,
+                        l,
+                    );
                     o = LST_MAR + uf2::measure(&*uf2::FONT_NEWYORK14, &l);
                 }
                 let (nx, ny) = draw_node(canvas, c, lx + o, ex, x + o, y, fl);
@@ -202,12 +225,14 @@ fn draw_node(
             }
             x = sx;
             y += PAR_PAD;
-        },
-        N::ListItem(ListItem { children, .. }) => for c in children {
-            let (nx, ny) = draw_node(canvas, c, lx, ex, x, y, fl);
-            x = nx;
-            y = ny - PAR_PAD;
-        },
+        }
+        N::ListItem(ListItem { children, .. }) => {
+            for c in children {
+                let (nx, ny) = draw_node(canvas, c, lx, ex, x, y, fl);
+                x = nx;
+                y = ny - PAR_PAD;
+            }
+        }
         N::Text(Text { value, .. }) => {
             let (nx, ny) = if fl.contains(DrawFl::HEADER) {
                 uf2::draw(canvas, &*uf2::FONT_NEWYORK34, lx, ex, x, y, &value)
@@ -216,7 +241,7 @@ fn draw_node(
             };
             x = nx;
             y = ny;
-        },
+        }
         n => println!("Node not implemented: {:?}", n),
     }
 

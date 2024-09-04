@@ -1,9 +1,9 @@
 use std::sync::LazyLock;
 
+use bitmaps::Bitmap;
 use paste::paste;
 use sdl2::rect::Point;
 use sdl2::render::WindowCanvas;
-use bitmaps::Bitmap;
 
 macro_rules! fonts {
     ($($name:ident := @sz $sz:literal $p:literal),*,) => {
@@ -51,9 +51,7 @@ impl<const XS: usize> Default for UfGlyph<XS> {
     fn default() -> Self {
         Self {
             width: 0,
-            inner: [Icn {
-                raw: Bitmap::new(),
-            }; XS],
+            inner: [Icn { raw: Bitmap::new() }; XS],
         }
     }
 }
@@ -89,7 +87,7 @@ pub fn parse<const X: usize>(bytes: &[u8]) -> Ufx<X> {
                         }
                     }
                 }
-            },
+            }
         }
     }
 
@@ -97,7 +95,11 @@ pub fn parse<const X: usize>(bytes: &[u8]) -> Ufx<X> {
 }
 
 pub fn draw_char<const XS: usize>(
-    canvas: &mut WindowCanvas, font: &Ufx<XS>, sx: usize, sy: usize, ch: u8
+    canvas: &mut WindowCanvas,
+    font: &Ufx<XS>,
+    sx: usize,
+    sy: usize,
+    ch: u8,
 ) {
     #[allow(non_snake_case)]
     let X = (XS as f64).sqrt() as usize;
@@ -109,9 +111,9 @@ pub fn draw_char<const XS: usize>(
             let sprite = ((x / 8) * X) + ((y / 8) % X);
             let pixel = ((y & 7) * 8) + (7 - (x & 7));
             if glyph.inner[sprite].raw.get(pixel as _) {
-                canvas.draw_point(
-                    Point::new(sx as i32 + (x as i32), sy as i32 + (y as i32))
-                ).unwrap();
+                canvas
+                    .draw_point(Point::new(sx as i32 + (x as i32), sy as i32 + (y as i32)))
+                    .unwrap();
             }
         }
     }
@@ -123,11 +125,15 @@ pub fn measure<const XS: usize>(font: &Ufx<XS>, text: &str) -> usize {
         .fold(0, |w, b| w + font.glyphs[*b as usize].width as usize)
 }
 
-
 pub fn draw<const XS: usize>(
-    canvas: &mut WindowCanvas, font: &Ufx<XS>, lx: usize, ex: usize, sx: usize, sy: usize, s: &str
-) -> (usize, usize)
-{
+    canvas: &mut WindowCanvas,
+    font: &Ufx<XS>,
+    lx: usize,
+    ex: usize,
+    sx: usize,
+    sy: usize,
+    s: &str,
+) -> (usize, usize) {
     #[allow(non_snake_case)]
     let X = (XS as f64).sqrt() as usize;
 
