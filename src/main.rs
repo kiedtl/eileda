@@ -1,12 +1,13 @@
 use sdl2;
 
-use sdl2::pixels::Color;
+use sdl2::image::InitFlag;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use std::time::Duration;
 
-mod uf2;
 mod md;
+mod uf2;
+mod slide;
 
 pub fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -15,31 +16,48 @@ pub fn main() {
         return;
     }
 
-    let stuff = md::parse(&args[1]);
-
     let sdl_context = sdl2::init().unwrap();
+    let _image_context = sdl2::image::init(InitFlag::PNG | InitFlag::JPG).unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
-    let window = video_subsystem.window("eileda", 960, 740) //1440, 810)
+    let window = video_subsystem.window("eileda", 960, 640) //1440, 810)
         .position_centered()
         .build()
         .unwrap();
 
     let mut canvas = window.into_canvas().build().unwrap();
+    let texture_creator = canvas.texture_creator();
 
     canvas.set_scale(2.0, 2.0).unwrap();
-    canvas.set_draw_color(Color::RGB(255, 255, 255));
-    canvas.clear();
-    canvas.present();
-    canvas.set_draw_color(Color::RGB(0, 0, 0));
 
-    //println!("{:#?}", stuff);
-    md::draw(&mut canvas, stuff);
+    let lexed = md::lex(&args[1]);
+    let stuff = md::parse(&texture_creator, &lexed);
+
+    if stuff.slides.len() == 0 {
+        eprintln!("Presentation is empty");
+        return;
+    }
+
+    let mut cur = 0;
+    stuff.draw(cur, &mut canvas);
 
     let mut event_pump = sdl_context.event_pump().unwrap();
     'running: loop {
         for event in event_pump.poll_iter() {
             match event {
+                Event::KeyDown { keycode: Some(Keycode::Left), .. } => {
+                    if cur > 0 {
+                        cur -= 1;
+                    }
+                    stuff.draw(cur, &mut canvas);
+                },
+                Event::KeyDown { keycode: Some(Keycode::Right), .. } |
+                Event::KeyDown { keycode: Some(Keycode::Space), .. } => {
+                    if cur < stuff.slides.len() - 1 {
+                        cur += 1;
+                    }
+                    stuff.draw(cur, &mut canvas);
+                },
                 Event::Quit {..} |
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
                     break 'running
@@ -48,7 +66,6 @@ pub fn main() {
             }
         }
 
-        canvas.present();
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
     }
 }
