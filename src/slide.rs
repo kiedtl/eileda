@@ -12,13 +12,18 @@ const LST_MAR: usize = 8;
 const IMG_SPC: usize = 12;
 const COL_SPC: usize = 12;
 
-#[derive(Copy, Clone, Debug)]
-pub struct GlobalConfig {
+pub struct Margin<'a> {
+    pub image: Texture<'a>,
+    pub middle: usize,
+}
+
+pub struct GlobalConfig<'a> {
     pub padding: usize,
+    pub margin: Option<Margin<'a>>,
 }
 
 pub struct Presentation<'a> {
-    pub config: GlobalConfig,
+    pub config: GlobalConfig<'a>,
     pub slides: Vec<Slide<'a>>,
 }
 
@@ -44,22 +49,57 @@ pub struct Grid<'a> {
 
 impl<'a> Presentation<'a> {
     pub fn draw(&self, slide: usize, canvas: &mut WindowCanvas) {
+        const S: usize = 2;
+        const W: usize = 1440 / S;
+        const H: usize = 840 / S;
+
         canvas.set_draw_color(Color::RGB(255, 255, 255));
         canvas.clear();
         canvas.set_draw_color(Color::RGB(0, 0, 0));
 
-        let lx = self.config.padding;
-        let ex = 960 / 2 - self.config.padding;
-        let ey = 640 / 2 - self.config.padding;
+        let mut lx = 0;
+        let mut ex = W;
+        let mut sy = 0;
+        let mut ey = H;
 
-        let mut y = self.config.padding;
+        if let Some(ref margin) = self.config.margin {
+            let (iw, ih) = (
+                margin.image.query().width as u32,
+                margin.image.query().height as u32,
+            ); // image w/h
+            let x_pad = (ex - lx).saturating_sub(margin.middle / S) / 2;
+            ex -= x_pad;
+            lx += x_pad;
 
-        if let Some(ref title) = self.slides[slide].title {
-            let (_, dy) = uf2::draw(canvas, &*uf2::FONT_NEWYORK34, lx, ex, lx, y, title);
-            y += dy + (PAR_PAD * 3);
+            let (lmw, lmh) = (lx as u32, H as u32); // left margin width/height
+            canvas.copy(
+                &margin.image,
+                Some(Rect::new(0, 0, lmw.min(iw), lmh.min(ih) as _)),
+                Some(Rect::new(0, 0, lmw, lmh)),
+            ).unwrap();
+
+            let (rmw, rmh) = ((W - ex) as u32, H as u32); // right margin width/height
+            let img_start = iw.saturating_sub(rmw) as i32;
+            canvas.copy(
+                &margin.image,
+                Some(Rect::new(img_start, 0, rmw.min(iw), rmh.min(ih))),
+                Some(Rect::new(ex as _, 0, rmw, rmh)),
+            ).unwrap();
         }
 
-        draw_content(canvas, &self.slides[slide].content, lx, ex, y, ey);
+        if self.config.padding > 0 {
+            lx += self.config.padding;
+            ex -= self.config.padding;
+            sy += self.config.padding;
+            ey -= self.config.padding;
+        }
+
+        if let Some(ref title) = self.slides[slide].title {
+            let (_, dy) = uf2::draw(canvas, &*uf2::FONT_NEWYORK34, lx, ex, lx, sy, title);
+            sy += dy + (PAR_PAD * 3);
+        }
+
+        draw_content(canvas, &self.slides[slide].content, lx, ex, sy, ey);
     }
 }
 

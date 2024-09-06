@@ -8,8 +8,9 @@ use sdl2::video::WindowContext;
 
 #[derive(Clone, Debug)]
 pub enum Item {
-    BeginSlide(Option<String>),
     Pad(usize),
+    Margin(usize, PathBuf),
+    BeginSlide(Option<String>),
     Md(markdown::mdast::Node),
     Img(PathBuf),
     BeginGrid(usize),
@@ -45,6 +46,12 @@ pub fn lex(file: &str) -> Vec<Item> {
                         Some(line[cmd[0].len() + 1..].to_string())
                     };
                     items.push(Item::BeginSlide(t));
+                }
+                ".MAR" if cmd.len() == 3 => {
+                    items.push(Item::Margin(
+                        cmd[1].parse().unwrap_or(0),
+                        PathBuf::from(cmd[2]),
+                    ));
                 }
                 ".PAD" if cmd.len() == 2 => {
                     items.push(Item::Pad(cmd[1].parse().unwrap_or(0)));
@@ -90,7 +97,7 @@ pub fn parse<'a>(
     items: &Vec<Item>,
 ) -> Presentation<'a> {
     let mut p = Presentation {
-        config: GlobalConfig { padding: 0 },
+        config: GlobalConfig { padding: 0, margin: None },
         slides: Vec::new(),
     };
 
@@ -128,6 +135,16 @@ pub fn parse<'a>(
         if p.slides.len() == 0 {
             match item {
                 Item::Pad(pad) => p.config.padding = *pad,
+                Item::Margin(middle_size, path) => p.config.margin = Some(Margin {
+                    image: match tcreator.load_texture(path) {
+                        Ok(t) => t,
+                        Err(s) => {
+                            eprintln!("Couldn't load image: {}", s);
+                            continue;
+                        }
+                    },
+                    middle: *middle_size,
+                }),
                 Item::BeginSlide(t) => {
                     let newt = t.clone().or(last_title.clone());
                     p.slides.push(Slide {
