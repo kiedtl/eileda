@@ -23,6 +23,7 @@ pub struct Presentation<'a> {
 }
 
 pub struct Slide<'a> {
+    pub title: Option<String>,
     pub content: Vec<Content<'a>>,
 }
 
@@ -49,10 +50,16 @@ impl<'a> Presentation<'a> {
 
         let lx = self.config.padding;
         let ex = 960 / 2 - self.config.padding;
-        let sy = self.config.padding;
         let ey = 640 / 2 - self.config.padding;
 
-        draw_content(canvas, &self.slides[slide].content, lx, ex, sy, ey);
+        let mut y = self.config.padding;
+
+        if let Some(ref title) = self.slides[slide].title {
+            let (_, dy) = uf2::draw(canvas, &*uf2::FONT_NEWYORK34, lx, ex, lx, y, title);
+            y += dy + (PAR_PAD * 3);
+        }
+
+        draw_content(canvas, &self.slides[slide].content, lx, ex, y, ey);
     }
 }
 
@@ -231,6 +238,20 @@ fn draw_node(
                 x = nx;
                 y = ny - PAR_PAD;
             }
+        }
+        N::BlockQuote(BlockQuote { children, .. }) => {
+            let oldy = sy;
+            for c in children {
+                let (nx, ny) = draw_node(canvas, c, lx + 10, ex, x + 10, y, fl);
+                x = nx;
+                y = ny;
+            }
+            x = lx;
+            let h = (y - oldy - PAR_PAD) as u32;
+            let rect = Rect::new(lx as _, oldy as _, 4, h);
+            canvas.set_draw_color(Color::RGB(186, 187, 186));
+            canvas.fill_rect(rect).unwrap();
+            canvas.set_draw_color(Color::RGB(0, 0, 0));
         }
         N::Text(Text { value, .. }) => {
             let (nx, ny) = if fl.contains(DrawFl::HEADER) {

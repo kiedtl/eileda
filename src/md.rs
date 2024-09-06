@@ -8,7 +8,7 @@ use sdl2::video::WindowContext;
 
 #[derive(Clone, Debug)]
 pub enum Item {
-    BeginSlide,
+    BeginSlide(Option<String>),
     Pad(usize),
     Md(markdown::mdast::Node),
     Img(PathBuf),
@@ -40,8 +40,11 @@ pub fn lex(file: &str) -> Vec<Item> {
 
             let cmd = line.split(" ").collect::<Vec<_>>();
             match cmd[0] {
-                ".SLD" if cmd.len() == 1 => {
-                    items.push(Item::BeginSlide);
+                ".SLD" => {
+                    let t = if cmd.len() == 1 { None } else {
+                        Some(line[cmd[0].len() + 1..].to_string())
+                    };
+                    items.push(Item::BeginSlide(t));
                 }
                 ".PAD" if cmd.len() == 2 => {
                     items.push(Item::Pad(cmd[1].parse().unwrap_or(0)));
@@ -91,6 +94,8 @@ pub fn parse<'a>(
         slides: Vec::new(),
     };
 
+    let mut last_title = None;
+
     let _push = |p: &mut Presentation<'a>, content: Content<'a>| {
         let slide_last_idx = p.slides.len() - 1;
 
@@ -123,18 +128,28 @@ pub fn parse<'a>(
         if p.slides.len() == 0 {
             match item {
                 Item::Pad(pad) => p.config.padding = *pad,
-                Item::BeginSlide => p.slides.push(Slide {
-                    content: Vec::new(),
-                }),
+                Item::BeginSlide(t) => {
+                    let newt = t.clone().or(last_title.clone());
+                    p.slides.push(Slide {
+                        title: newt.clone(),
+                        content: Vec::new(),
+                    });
+                    last_title = newt.clone();
+                },
                 _ => eprintln!("Unexpected headers: {:?}", item),
             }
         } else {
             let slide_last_idx = p.slides.len() - 1;
 
             match item {
-                Item::BeginSlide => p.slides.push(Slide {
-                    content: Vec::new(),
-                }),
+                Item::BeginSlide(t) => {
+                    let newt = t.clone().or(last_title.clone());
+                    p.slides.push(Slide {
+                        title: newt.clone(),
+                        content: Vec::new(),
+                    });
+                    last_title = newt.clone();
+                },
                 Item::BeginGrid(r) => _push(
                     &mut p,
                     Content::Grid(Grid {
