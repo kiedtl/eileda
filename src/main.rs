@@ -32,7 +32,7 @@ pub fn main() {
     canvas.set_scale(2.0, 2.0).unwrap();
 
     let lexed = md::lex(&args[1]);
-    let stuff = md::parse(&texture_creator, &lexed);
+    let mut stuff = md::parse(&texture_creator, &lexed);
 
     if stuff.slides.len() == 0 {
         eprintln!("Presentation is empty");
@@ -66,6 +66,20 @@ pub fn main() {
                     if cur < stuff.slides.len() - 1 {
                         cur += 1;
                     }
+                    stuff.draw(cur, &mut canvas);
+                }
+                Event::KeyDown {
+                    keycode: Some(Keycode::R),
+                    ..
+                } => {
+                    let lexed = md::lex(&args[1]);
+                    stuff = md::parse(&texture_creator, &lexed);
+
+                    if stuff.slides.len() == 0 {
+                        eprintln!("Presentation is empty");
+                        return;
+                    }
+                    cur = cur.min(stuff.slides.len() - 1);
                     stuff.draw(cur, &mut canvas);
                 }
                 Event::Quit { .. }
