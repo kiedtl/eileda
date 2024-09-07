@@ -6,7 +6,6 @@ use bitflags::bitflags;
 use markdown;
 
 use sdl2::ttf::Font as Sdl2Font;
-use sdl2::ttf::FontStyle as Sdl2FontStyle;
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
 use sdl2::render::Texture;
@@ -34,7 +33,12 @@ pub struct Presentation<'a> {
     pub tcreator: &'a TextureCreator<WindowContext>,
     pub config: GlobalConfig<'a>,
     pub slides: Vec<Slide<'a>>,
-    pub fonts: Vec<RefCell<Sdl2Font<'a, 'a>>>,
+
+    pub f_bold_68: RefCell<Sdl2Font<'a, 'a>>,
+    pub f_norm_24: RefCell<Sdl2Font<'a, 'a>>,
+    pub f_bold_24: RefCell<Sdl2Font<'a, 'a>>,
+    pub f_emph_24: RefCell<Sdl2Font<'a, 'a>>,
+    pub f_both_24: RefCell<Sdl2Font<'a, 'a>>,
 }
 
 pub struct Slide<'a> {
@@ -105,7 +109,7 @@ impl<'a> Presentation<'a> {
         }
 
         if let Some(ref title) = self.slides[slide].title {
-            let (_, dy) = uf2::draw(canvas, &*uf2::FONT_NEWYORK34, lx, ex, lx, sy, title);
+            let (_, dy) = draw_text(self, canvas, lx, ex, lx, sy, DrawFl::TITLE, title);
             sy += dy + (PAR_PAD * 3);
         }
 
@@ -116,10 +120,11 @@ impl<'a> Presentation<'a> {
 bitflags! {
     #[derive(PartialEq, Copy, Clone)]
     pub struct DrawFl: u16 {
-        const NONE = 0b000;
-        const BOLD = 0b001;
-        const EMPH = 0b010;
-        const HEAD = 0b100;
+        const NONE = 0b0000;
+        const BOLD = 0b0001;
+        const EMPH = 0b0010;
+        const HEAD = 0b0100;
+        const TITLE = 0b1000;
     }
 }
 
@@ -329,14 +334,20 @@ fn draw_md(
             for (i, c) in children.iter().enumerate() {
                 let o;
                 if !*ordered {
-                    uf2::draw_char(canvas, &*uf2::FONT_NEWYORK14, x + LST_MAR, y, 0xA5);
-                    o = LST_MAR
-                        + uf2::FONT_NEWYORK14.glyphs[0xA5].width as usize
-                        + uf2::FONT_NEWYORK14.glyphs[0x20].width as usize;
+                    if p.config.ttf {
+                        let l = "• ";
+                        draw_text(p, canvas, lx + LST_MAR, ex, x + LST_MAR, y, DrawFl::NONE, l);
+                        o = LST_MAR + measure_text(p, DrawFl::NONE, &l);
+                    } else {
+                        uf2::draw_char(canvas, &*uf2::FONT_NEWYORK14, x + LST_MAR, y, 0xA5);
+                        o = LST_MAR
+                            + uf2::FONT_NEWYORK14.glyphs[0xA5].width as usize
+                            + uf2::FONT_NEWYORK14.glyphs[0x20].width as usize;
+                    }
                 } else {
                     let l = &format!("{}) ", start.unwrap_or(1) as usize + i);
-                    uf2::draw(canvas, &*uf2::FONT_NEWYORK14, lx + LST_MAR, ex, x + LST_MAR, y, l);
-                    o = LST_MAR + uf2::measure(&*uf2::FONT_NEWYORK14, &l);
+                    draw_text(p, canvas, lx + LST_MAR, ex, x + LST_MAR, y, DrawFl::NONE, l);
+                    o = LST_MAR + measure_text(p, DrawFl::NONE, &l);
                 }
                 let (nx, ny) = draw_md(p, canvas, c, lx + o, ex, x + o, y, fl);
                 x = nx - o;
@@ -385,72 +396,49 @@ fn draw_text(
 ) -> (usize, usize)
 {
     if p.config.ttf {
-        let mut style = Sdl2FontStyle::NORMAL;
-        if fl.contains(DrawFl::BOLD) {
-            style |= Sdl2FontStyle::BOLD;
-        }
-        if fl.contains(DrawFl::HEAD) {
-            // style |= FontStyle::UNDERLINE;
-        }
-        if fl.contains(DrawFl::EMPH) {
-            style |= Sdl2FontStyle::ITALIC;
-        }
-        let mut font = p.fonts[0].borrow_mut();
-        font.set_style(style);
+        let font = if fl.contains(DrawFl::BOLD | DrawFl::EMPH) {
+            p.f_both_24.borrow_mut()
+        } else if fl.contains(DrawFl::BOLD) || fl.contains(DrawFl::HEAD) {
+            p.f_bold_24.borrow_mut()
+        } else if fl.contains(DrawFl::TITLE) {
+            p.f_bold_68.borrow_mut()
+        } else if fl.contains(DrawFl::EMPH) {
+            p.f_emph_24.borrow_mut()
+        } else {
+            p.f_norm_24.borrow_mut()
+        };
 
         let mut x = sx;
         let mut y = sy;
 
-        // let h = (p.fonts[0].height() as usize) / 2;
-        // let surf = p.fonts[0].render(value)
-        //     .blended_wrapped(Color::RGB(0, 0, 0), (ex as u32) * 2).unwrap();
-        // let text = surf.as_texture(p.tcreator).unwrap();
-        // let (tw, th) = (text.query().width as usize, text.query().height as usize);
-        // canvas.set_scale(1.0, 1.0).unwrap();
-        // canvas.copy(
-        //     &text,
-        //     None,
-        //     Some(Rect::new((x * 2) as i32, (y * 2) as i32, tw as _, th as _))
-        // ).unwrap();
-        // canvas.set_scale(2.0, 2.0).unwrap();
-        // x += tw / 2;
-        // if th > h*2 {
-        //     y += th / 2;
-        //     x = lx;
-        // }
-
         for group in value.split_inclusive(&[' ', '\n']) {
             if x + (font.size_of(group).unwrap().0 as usize) / 2 >= ex {
-                y += (font.height() as usize) / 2;
+                y += (font.recommended_line_spacing() as usize) / 2;
                 x = lx;
             }
 
-            for ch in group.as_bytes() {
-                if *ch == b'\n' {
-                    // y += 8 * X;
-                    // x = lx;
-                    x += font.size_of(" ").unwrap().0 as usize;
-                    continue;
-                }
-
-                let surf = font.render_char(*ch as _)
-                    .blended(canvas.draw_color())
-                    .unwrap();
-                let text = surf.as_texture(p.tcreator).unwrap();
-                let (tw, th) = (text.query().width as usize, text.query().height as usize);
-                canvas.set_scale(1.0, 1.0).unwrap();
-                canvas.copy(
-                    &text,
-                    None,
-                    Some(Rect::new((x * 2) as i32, (y * 2) as i32, tw as _, th as _))
-                ).unwrap();
-                canvas.set_scale(2.0, 2.0).unwrap();
-                x += tw / 2;
-            }
+            let grp = group.to_string().clone().replace("\n", " ");
+            let surf = font.render(&grp)
+                .blended(canvas.draw_color())
+                .unwrap();
+            let text = surf.as_texture(p.tcreator).unwrap();
+            let (tw, th) = (text.query().width as usize, text.query().height as usize);
+            canvas.set_scale(1.0, 1.0).unwrap();
+            canvas.copy(
+                &text,
+                None,
+                Some(Rect::new((x * 2) as i32, (y * 2) as i32, tw as _, th as _))
+            ).unwrap();
+            canvas.set_scale(2.0, 2.0).unwrap();
+            x += (tw as f32 / 2.0).round() as usize;
         }
 
         (x, y)
     } else {
+        if fl.contains(DrawFl::TITLE) {
+            return uf2::draw(canvas, &*uf2::FONT_NEWYORK34, lx, ex, sx, sy, &value);
+        }
+
         let fnt = if fl.contains(DrawFl::BOLD) {
             &*uf2::FONT_VENICE14
         } else if fl.contains(DrawFl::HEAD) {
@@ -462,5 +450,39 @@ fn draw_text(
         };
 
         uf2::draw(canvas, fnt, lx, ex, sx, sy, &value)
+    }
+}
+
+fn measure_text(p: &Presentation, fl: DrawFl, value: &str) -> usize {
+    if p.config.ttf {
+        let font = if fl.contains(DrawFl::BOLD | DrawFl::EMPH) {
+            p.f_both_24.borrow_mut()
+        } else if fl.contains(DrawFl::BOLD) || fl.contains(DrawFl::HEAD) {
+            p.f_bold_24.borrow_mut()
+        } else if fl.contains(DrawFl::TITLE) {
+            p.f_bold_68.borrow_mut()
+        } else if fl.contains(DrawFl::EMPH) {
+            p.f_emph_24.borrow_mut()
+        } else {
+            p.f_norm_24.borrow_mut()
+        };
+
+        (font.size_of(value).unwrap().0 as usize) / 2
+    } else {
+        if fl.contains(DrawFl::TITLE) {
+            return uf2::measure(&*uf2::FONT_NEWYORK34, &value);
+        }
+
+        let fnt = if fl.contains(DrawFl::BOLD) {
+            &*uf2::FONT_VENICE14
+        } else if fl.contains(DrawFl::HEAD) {
+            &*uf2::FONT_TIMES15
+        } else if fl.contains(DrawFl::EMPH) {
+            &*uf2::FONT_ANGELES12
+        } else {
+            &*uf2::FONT_GENEVA12
+        };
+
+        uf2::measure(fnt, &value)
     }
 }

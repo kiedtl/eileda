@@ -106,6 +106,18 @@ pub fn parse<'a>(
     fcreator: &'a Sdl2TtfContext,
     items: &Vec<Item>,
 ) -> Presentation<'a> {
+    macro_rules! embed_ttf {
+        ($path:literal, $sz:literal) => {
+            {
+                let data = include_bytes!($path);
+                let rwops = Box::new(RWops::from_bytes(data).unwrap());
+                RefCell::new(
+                    fcreator.load_font_from_rwops(*rwops, $sz).unwrap()
+                )
+            }
+        }
+    }
+
     let mut p = Presentation {
         tcreator,
         config: GlobalConfig {
@@ -114,12 +126,13 @@ pub fn parse<'a>(
             ttf: false,
         },
         slides: Vec::new(),
-        fonts: Vec::new(),
-    };
 
-    let inter_data = include_bytes!("../assets/ttf/Inter-V.ttf");
-    let inter_rwops = Box::new(RWops::from_bytes(inter_data).unwrap());
-    p.fonts.push(RefCell::new(fcreator.load_font_from_rwops(*inter_rwops, 24).unwrap()));
+        f_bold_68: embed_ttf!("../assets/ttf/Inter-Bold.otf", 68),
+        f_norm_24: embed_ttf!("../assets/ttf/Inter-Regular.otf", 24),
+        f_bold_24: embed_ttf!("../assets/ttf/Inter-Bold.otf", 24),
+        f_emph_24: embed_ttf!("../assets/ttf/Inter-Italic.otf", 24),
+        f_both_24: embed_ttf!("../assets/ttf/Inter-BoldItalic.otf", 24),
+    };
 
     let mut last_title = None;
 
