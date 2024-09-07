@@ -17,23 +17,23 @@ macro_rules! fonts {
 
 #[rustfmt::skip]
 fonts! {
-    SHAVIAN12  := @sz 4  @h 12 "../assets/shavian12.uf2",
-    CREAM12    := @sz 4  @h 12 "../assets/cream12.uf2",
-    MONACO12   := @sz 4  @h 12 "../assets/monaco12.uf2",
-    CHICAGO12  := @sz 4  @h 12 "../assets/chicago12.uf2",
-    TIMES12    := @sz 4  @h 12 "../assets/times12.uf2",
-    NEWYORK12  := @sz 4  @h 12 "../assets/newyork12.uf2",
-    ANGELES12  := @sz 4  @h 12 "../assets/losangeles12.uf2",
-    GENEVA12   := @sz 4  @h 12 "../assets/geneva12.uf2",
-    PALATINO12 := @sz 4  @h 12 "../assets/palatino12.uf2",
+    SHAVIAN12  := @sz 4  @h 12 "../assets/ufx/shavian12.uf2",
+    CREAM12    := @sz 4  @h 12 "../assets/ufx/cream12.uf2",
+    MONACO12   := @sz 4  @h 12 "../assets/ufx/monaco12.uf2",
+    CHICAGO12  := @sz 4  @h 12 "../assets/ufx/chicago12.uf2",
+    TIMES12    := @sz 4  @h 12 "../assets/ufx/times12.uf2",
+    NEWYORK12  := @sz 4  @h 12 "../assets/ufx/newyork12.uf2",
+    ANGELES12  := @sz 4  @h 12 "../assets/ufx/losangeles12.uf2",
+    GENEVA12   := @sz 4  @h 12 "../assets/ufx/geneva12.uf2",
+    PALATINO12 := @sz 4  @h 12 "../assets/ufx/palatino12.uf2",
 
-    GENEVA14   := @sz 4  @h 14 "../assets/geneva14.uf2",
-    PALATINO14 := @sz 4  @h 14 "../assets/palatino14.uf2",
-    VENICE14   := @sz 4  @h 14 "../assets/venice14.uf2",
-    NEWYORK14  := @sz 4  @h 14 "../assets/newyork14.uf2",
+    GENEVA14   := @sz 4  @h 14 "../assets/ufx/geneva14.uf2",
+    PALATINO14 := @sz 4  @h 14 "../assets/ufx/palatino14.uf2",
+    VENICE14   := @sz 4  @h 14 "../assets/ufx/venice14.uf2",
+    NEWYORK14  := @sz 4  @h 14 "../assets/ufx/newyork14.uf2",
 
-    TIMES15    := @sz 4  @h 15 "../assets/times15.uf2",
-    NEWYORK34  := @sz 25 @h 34 "../assets/newyork34.uf5",
+    TIMES15    := @sz 4  @h 15 "../assets/ufx/times15.uf2",
+    NEWYORK34  := @sz 25 @h 34 "../assets/ufx/newyork34.uf5",
 }
 
 #[derive(Copy, Clone, Debug)]

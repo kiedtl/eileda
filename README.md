@@ -29,6 +29,8 @@ See `text.eimd` for example.
 Configuration directives (must appear before content):
 
 - `.PAD`: Slide padding, in pixels.
+- `.MAR <middle> <image_path>`: Creates a box of size `<middle>` (pixels),
+  centers it on the screen, and displays `<image_path>` in the margins, if any.
 
 Content directives:
 
@@ -43,11 +45,12 @@ Content directives:
 ## License
 
 Eileda bundles a number of font files in `assets/`. I did not create those and I
-take no credit for them. However, I did make minor modifications to a few fonts,
-such as changing the character alignments.
+take no credit for them. However, I did make minor modifications to a few `ufx`
+fonts, such as changing the character alignments.
 
-- [Font License (MIT)](https://git.sr.ht/~rabbits/turye/tree/main/item/LICENSE)
+- [Ufx Font License (MIT)](https://git.sr.ht/~rabbits/turye/tree/main/item/LICENSE)
   -- © Hundred Rabbits
+- [Inter Font License (SIL)](https://github.com/rsms/inter/blob/master/LICENSE.txt)
 
 Eileda itself is licensed under the MIT license. Feel free to fork and modify as
 you please.

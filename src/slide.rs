@@ -1,11 +1,18 @@
+use std::cell::RefCell;
+
 use crate::uf2;
 
 use bitflags::bitflags;
 use markdown;
+
+use sdl2::ttf::Font as Sdl2Font;
+use sdl2::ttf::FontStyle as Sdl2FontStyle;
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
 use sdl2::render::Texture;
 use sdl2::render::WindowCanvas;
+use sdl2::render::TextureCreator;
+use sdl2::video::WindowContext;
 
 const PAR_PAD: usize = 12;
 const LST_MAR: usize = 8;
@@ -20,11 +27,14 @@ pub struct Margin<'a> {
 pub struct GlobalConfig<'a> {
     pub padding: usize,
     pub margin: Option<Margin<'a>>,
+    pub ttf: bool,
 }
 
 pub struct Presentation<'a> {
+    pub tcreator: &'a TextureCreator<WindowContext>,
     pub config: GlobalConfig<'a>,
     pub slides: Vec<Slide<'a>>,
+    pub fonts: Vec<RefCell<Sdl2Font<'a, 'a>>>,
 }
 
 pub struct Slide<'a> {
@@ -99,7 +109,7 @@ impl<'a> Presentation<'a> {
             sy += dy + (PAR_PAD * 3);
         }
 
-        draw_content(canvas, &self.slides[slide].content, lx, ex, sy, ey);
+        draw_content(self, canvas, &self.slides[slide].content, lx, ex, sy, ey);
     }
 }
 
@@ -114,6 +124,7 @@ bitflags! {
 }
 
 fn draw_content<'a>(
+    p: &Presentation,
     canvas: &mut WindowCanvas,
     content: &Vec<Content<'a>>,
     lx: usize,
@@ -133,8 +144,8 @@ fn draw_content<'a>(
                 ..
             }) => {
                 let bx = lx + ((ex - lx) * ratio / 100);
-                let y1 = draw_content(canvas, first, lx, bx, y, ey);
-                let y2 = draw_content(canvas, second, bx + COL_SPC, ex, y, ey);
+                let y1 = draw_content(p, canvas, first, lx, bx, y, ey);
+                let y2 = draw_content(p, canvas, second, bx + COL_SPC, ex, y, ey);
                 y = y1.max(y2);
             }
             Content::Img(t) => {
@@ -161,7 +172,7 @@ fn draw_content<'a>(
                 y += ih as usize + IMG_SPC;
             }
             Content::Md(md) => {
-                let (_, ny) = draw_md(canvas, &md, lx, ex, lx, y, DrawFl::NONE);
+                let (_, ny) = draw_md(p, canvas, &md, lx, ex, lx, y, DrawFl::NONE);
                 y = ny;
             }
         }
@@ -171,6 +182,7 @@ fn draw_content<'a>(
 }
 
 fn draw_md(
+    p: &Presentation,
     canvas: &mut WindowCanvas,
     node: &markdown::mdast::Node,
     lx: usize,
@@ -191,8 +203,9 @@ fn draw_md(
         //&*uf2::FONT_NEWYORK14
         &*uf2::FONT_TIMES15
     } else if fl.contains(DrawFl::EMPH) {
+        &*uf2::FONT_ANGELES12
         //&*uf2::FONT_CREAM12
-        &*uf2::FONT_SHAVIAN12
+        //&*uf2::FONT_SHAVIAN12
     } else {
         &*uf2::FONT_GENEVA12
     };
@@ -214,7 +227,7 @@ fn draw_md(
     match node {
         N::Root(Root { children, .. }) => {
             for c in children {
-                let (nx, ny) = draw_md(canvas, c, lx, ex, x, y, fl);
+                let (nx, ny) = draw_md(p, canvas, c, lx, ex, x, y, fl);
                 x = nx;
                 y = ny;
             }
@@ -222,7 +235,7 @@ fn draw_md(
         }
         N::Paragraph(Paragraph { children, .. }) => {
             for c in children {
-                let (nx, ny) = draw_md(canvas, c, lx, ex, x, y, fl);
+                let (nx, ny) = draw_md(p, canvas, c, lx, ex, x, y, fl);
                 x = nx;
                 y = ny;
             }
@@ -256,7 +269,7 @@ fn draw_md(
             // x += 6;
 
             for c in children {
-                let (nx, ny) = draw_md(canvas, c, lx, ex, x, y, fl | DrawFl::HEAD);
+                let (nx, ny) = draw_md(p, canvas, c, lx, ex, x, y, fl | DrawFl::HEAD);
                 x = nx;
                 y = ny;
             }
@@ -267,7 +280,7 @@ fn draw_md(
             (x, y) = (ox, oy);
             canvas.set_draw_color(Color::RGB(220, 220, 200));
             for c in children {
-                let (nx, ny) = draw_md(canvas, c, lx, ex, x, y, fl | DrawFl::HEAD);
+                let (nx, ny) = draw_md(p, canvas, c, lx, ex, x, y, fl | DrawFl::HEAD);
                 x = nx;
                 y = ny;
             }
@@ -294,14 +307,14 @@ fn draw_md(
         }
         N::Strong(Strong { children, .. }) => {
             for c in children {
-                let (nx, ny) = draw_md(canvas, c, lx, ex, x, y, fl | DrawFl::BOLD);
+                let (nx, ny) = draw_md(p, canvas, c, lx, ex, x, y, fl | DrawFl::BOLD);
                 x = nx;
                 y = ny;
             }
         }
         N::Emphasis(Emphasis { children, .. }) => {
             for c in children {
-                let (nx, ny) = draw_md(canvas, c, lx, ex, x, y, fl | DrawFl::EMPH);
+                let (nx, ny) = draw_md(p, canvas, c, lx, ex, x, y, fl | DrawFl::EMPH);
                 x = nx;
                 y = ny;
             }
@@ -325,7 +338,7 @@ fn draw_md(
                     uf2::draw(canvas, &*uf2::FONT_NEWYORK14, lx + LST_MAR, ex, x + LST_MAR, y, l);
                     o = LST_MAR + uf2::measure(&*uf2::FONT_NEWYORK14, &l);
                 }
-                let (nx, ny) = draw_md(canvas, c, lx + o, ex, x + o, y, fl);
+                let (nx, ny) = draw_md(p, canvas, c, lx + o, ex, x + o, y, fl);
                 x = nx - o;
                 y = ny;
             }
@@ -334,7 +347,7 @@ fn draw_md(
         }
         N::ListItem(ListItem { children, .. }) => {
             for c in children {
-                let (nx, ny) = draw_md(canvas, c, lx, ex, x, y, fl);
+                let (nx, ny) = draw_md(p, canvas, c, lx, ex, x, y, fl);
                 x = nx;
                 y = ny - PAR_PAD;
             }
@@ -342,7 +355,7 @@ fn draw_md(
         N::BlockQuote(BlockQuote { children, .. }) => {
             let oldy = sy;
             for c in children {
-                let (nx, ny) = draw_md(canvas, c, lx + 10, ex, x + 10, y, fl);
+                let (nx, ny) = draw_md(p, canvas, c, lx + 10, ex, x + 10, y, fl);
                 x = nx;
                 y = ny;
             }
@@ -350,7 +363,7 @@ fn draw_md(
             frect(canvas, lx, oldy, 4, y - oldy - PAR_PAD, 0xbabbba);
         }
         N::Text(Text { value, .. }) => {
-            let (nx, ny) = uf2::draw(canvas, fnt, lx, ex, x, y, &value);
+            let (nx, ny) = draw_text(p, canvas, lx, ex, x, y, fl, &value);
             x = nx;
             y = ny;
         }
@@ -358,4 +371,96 @@ fn draw_md(
     }
 
     (x, y)
+}
+
+fn draw_text(
+    p: &Presentation,
+    canvas: &mut WindowCanvas,
+    lx: usize,
+    ex: usize,
+    sx: usize,
+    sy: usize,
+    fl: DrawFl,
+    value: &str,
+) -> (usize, usize)
+{
+    if p.config.ttf {
+        let mut style = Sdl2FontStyle::NORMAL;
+        if fl.contains(DrawFl::BOLD) {
+            style |= Sdl2FontStyle::BOLD;
+        }
+        if fl.contains(DrawFl::HEAD) {
+            // style |= FontStyle::UNDERLINE;
+        }
+        if fl.contains(DrawFl::EMPH) {
+            style |= Sdl2FontStyle::ITALIC;
+        }
+        let mut font = p.fonts[0].borrow_mut();
+        font.set_style(style);
+
+        let mut x = sx;
+        let mut y = sy;
+
+        // let h = (p.fonts[0].height() as usize) / 2;
+        // let surf = p.fonts[0].render(value)
+        //     .blended_wrapped(Color::RGB(0, 0, 0), (ex as u32) * 2).unwrap();
+        // let text = surf.as_texture(p.tcreator).unwrap();
+        // let (tw, th) = (text.query().width as usize, text.query().height as usize);
+        // canvas.set_scale(1.0, 1.0).unwrap();
+        // canvas.copy(
+        //     &text,
+        //     None,
+        //     Some(Rect::new((x * 2) as i32, (y * 2) as i32, tw as _, th as _))
+        // ).unwrap();
+        // canvas.set_scale(2.0, 2.0).unwrap();
+        // x += tw / 2;
+        // if th > h*2 {
+        //     y += th / 2;
+        //     x = lx;
+        // }
+
+        for group in value.split_inclusive(&[' ', '\n']) {
+            if x + (font.size_of(group).unwrap().0 as usize) / 2 >= ex {
+                y += (font.height() as usize) / 2;
+                x = lx;
+            }
+
+            for ch in group.as_bytes() {
+                if *ch == b'\n' {
+                    // y += 8 * X;
+                    // x = lx;
+                    x += font.size_of(" ").unwrap().0 as usize;
+                    continue;
+                }
+
+                let surf = font.render_char(*ch as _)
+                    .blended(canvas.draw_color())
+                    .unwrap();
+                let text = surf.as_texture(p.tcreator).unwrap();
+                let (tw, th) = (text.query().width as usize, text.query().height as usize);
+                canvas.set_scale(1.0, 1.0).unwrap();
+                canvas.copy(
+                    &text,
+                    None,
+                    Some(Rect::new((x * 2) as i32, (y * 2) as i32, tw as _, th as _))
+                ).unwrap();
+                canvas.set_scale(2.0, 2.0).unwrap();
+                x += tw / 2;
+            }
+        }
+
+        (x, y)
+    } else {
+        let fnt = if fl.contains(DrawFl::BOLD) {
+            &*uf2::FONT_VENICE14
+        } else if fl.contains(DrawFl::HEAD) {
+            &*uf2::FONT_TIMES15
+        } else if fl.contains(DrawFl::EMPH) {
+            &*uf2::FONT_ANGELES12
+        } else {
+            &*uf2::FONT_GENEVA12
+        };
+
+        uf2::draw(canvas, fnt, lx, ex, sx, sy, &value)
+    }
 }

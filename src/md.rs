@@ -1,10 +1,13 @@
+use std::cell::RefCell;
 use std::fs;
 use std::path::PathBuf;
 
 use crate::slide::*;
 use sdl2::image::LoadTexture;
 use sdl2::render::TextureCreator;
+use sdl2::ttf::Sdl2TtfContext;
 use sdl2::video::WindowContext;
+use sdl2::rwops::RWops;
 
 #[derive(Clone, Debug)]
 pub enum Item {
@@ -100,12 +103,23 @@ pub fn lex(file: &str) -> Vec<Item> {
 
 pub fn parse<'a>(
     tcreator: &'a TextureCreator<WindowContext>,
+    fcreator: &'a Sdl2TtfContext,
     items: &Vec<Item>,
 ) -> Presentation<'a> {
     let mut p = Presentation {
-        config: GlobalConfig { padding: 16, margin: None },
+        tcreator,
+        config: GlobalConfig {
+            padding: 16,
+            margin: None,
+            ttf: false,
+        },
         slides: Vec::new(),
+        fonts: Vec::new(),
     };
+
+    let inter_data = include_bytes!("../assets/ttf/Inter-V.ttf");
+    let inter_rwops = Box::new(RWops::from_bytes(inter_data).unwrap());
+    p.fonts.push(RefCell::new(fcreator.load_font_from_rwops(*inter_rwops, 24).unwrap()));
 
     let mut last_title = None;
 

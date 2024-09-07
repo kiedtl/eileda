@@ -18,6 +18,7 @@ pub fn main() {
 
     let sdl_context = sdl2::init().unwrap();
     let _image_context = sdl2::image::init(InitFlag::PNG | InitFlag::JPG).unwrap();
+    let font_context = sdl2::ttf::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
     let window = video_subsystem
@@ -32,7 +33,7 @@ pub fn main() {
     canvas.set_scale(2.0, 2.0).unwrap();
 
     let lexed = md::lex(&args[1]);
-    let mut stuff = md::parse(&texture_creator, &lexed);
+    let mut stuff = md::parse(&texture_creator, &font_context, &lexed);
 
     if stuff.slides.len() == 0 {
         eprintln!("Presentation is empty");
@@ -73,13 +74,20 @@ pub fn main() {
                     ..
                 } => {
                     let lexed = md::lex(&args[1]);
-                    stuff = md::parse(&texture_creator, &lexed);
+                    stuff = md::parse(&texture_creator, &font_context, &lexed);
 
                     if stuff.slides.len() == 0 {
                         eprintln!("Presentation is empty");
                         return;
                     }
                     cur = cur.min(stuff.slides.len() - 1);
+                    stuff.draw(cur, &mut canvas);
+                }
+                Event::KeyDown {
+                    keycode: Some(Keycode::T),
+                    ..
+                } => {
+                    stuff.config.ttf = !stuff.config.ttf;
                     stuff.draw(cur, &mut canvas);
                 }
                 Event::Quit { .. }
