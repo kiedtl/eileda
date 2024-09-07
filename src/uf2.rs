@@ -6,38 +6,39 @@ use sdl2::rect::Point;
 use sdl2::render::WindowCanvas;
 
 macro_rules! fonts {
-    ($($name:ident := @sz $sz:literal $p:literal),*,) => {
+    ($($name:ident := @sz $sz:literal @h $h:literal $p:literal),*,) => {
         $(paste! {
             #[allow(dead_code)]
             pub static [<FONT_ $name>]: LazyLock<Ufx<$sz>> =
-                LazyLock::new(|| parse::<$sz>(include_bytes!($p)));
+                LazyLock::new(|| parse::<$sz>(include_bytes!($p), $h));
         })*
     };
 }
 
 #[rustfmt::skip]
 fonts! {
-    SHAVIAN12  := @sz 4  "../assets/shavian12.uf2",
-    CREAM12    := @sz 4  "../assets/cream12.uf2",
-    MONACO12   := @sz 4  "../assets/monaco12.uf2",
-    CHICAGO12  := @sz 4  "../assets/chicago12.uf2",
-    TIMES12    := @sz 4  "../assets/times12.uf2",
-    NEWYORK12  := @sz 4  "../assets/newyork12.uf2",
-    ANGELES12  := @sz 4  "../assets/losangeles12.uf2",
-    GENEVA12   := @sz 4  "../assets/geneva12.uf2",
-    PALATINO12 := @sz 4  "../assets/palatino12.uf2",
+    SHAVIAN12  := @sz 4  @h 12 "../assets/shavian12.uf2",
+    CREAM12    := @sz 4  @h 12 "../assets/cream12.uf2",
+    MONACO12   := @sz 4  @h 12 "../assets/monaco12.uf2",
+    CHICAGO12  := @sz 4  @h 12 "../assets/chicago12.uf2",
+    TIMES12    := @sz 4  @h 12 "../assets/times12.uf2",
+    NEWYORK12  := @sz 4  @h 12 "../assets/newyork12.uf2",
+    ANGELES12  := @sz 4  @h 12 "../assets/losangeles12.uf2",
+    GENEVA12   := @sz 4  @h 12 "../assets/geneva12.uf2",
+    PALATINO12 := @sz 4  @h 12 "../assets/palatino12.uf2",
 
-    GENEVA14   := @sz 4  "../assets/geneva14.uf2",
-    PALATINO14 := @sz 4  "../assets/palatino14.uf2",
-    VENICE14   := @sz 4  "../assets/venice14.uf2",
-    NEWYORK14  := @sz 4  "../assets/newyork14.uf2",
+    GENEVA14   := @sz 4  @h 14 "../assets/geneva14.uf2",
+    PALATINO14 := @sz 4  @h 14 "../assets/palatino14.uf2",
+    VENICE14   := @sz 4  @h 14 "../assets/venice14.uf2",
+    NEWYORK14  := @sz 4  @h 14 "../assets/newyork14.uf2",
 
-    TIMES15    := @sz 4  "../assets/times15.uf2",
-    NEWYORK34  := @sz 25 "../assets/newyork34.uf5",
+    TIMES15    := @sz 4  @h 15 "../assets/times15.uf2",
+    NEWYORK34  := @sz 25 @h 34 "../assets/newyork34.uf5",
 }
 
 #[derive(Copy, Clone, Debug)]
 pub struct Ufx<const XS: usize> {
+    pub height: usize,
     pub glyphs: [UfGlyph<XS>; 256],
 }
 
@@ -61,8 +62,10 @@ pub struct Icn {
     pub raw: Bitmap<64>,
 }
 
-pub fn parse<const X: usize>(bytes: &[u8]) -> Ufx<X> {
+pub fn parse<const XS: usize>(bytes: &[u8], pxheight: usize) -> Ufx<XS> {
+
     let mut ufx = Ufx {
+        height: pxheight,
         glyphs: [Default::default(); 256],
     };
 
@@ -79,7 +82,7 @@ pub fn parse<const X: usize>(bytes: &[u8]) -> Ufx<X> {
                 if b_i == 8 {
                     b_i = 0;
                     s_i += 1;
-                    if s_i == X {
+                    if s_i == XS {
                         s_i = 0;
                         g_i += 1;
                         if g_i == 256 {
@@ -148,8 +151,10 @@ pub fn draw<const XS: usize>(
 
         for ch in group.as_bytes() {
             if *ch == b'\n' {
-                y += 8 * X;
-                x = lx;
+                // y += 8 * X;
+                // x = lx;
+                draw_char(canvas, font, x, y, b' ');
+                x += font.glyphs[b' ' as usize].width as usize;
                 continue;
             }
 

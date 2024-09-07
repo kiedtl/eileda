@@ -50,7 +50,7 @@ pub struct Grid<'a> {
 impl<'a> Presentation<'a> {
     pub fn draw(&self, slide: usize, canvas: &mut WindowCanvas) {
         const S: usize = 2;
-        const W: usize = 1440 / S;
+        const W: usize = 960 / S;
         const H: usize = 840 / S;
 
         canvas.set_draw_color(Color::RGB(255, 255, 255));
@@ -106,10 +106,10 @@ impl<'a> Presentation<'a> {
 bitflags! {
     #[derive(PartialEq, Copy, Clone)]
     pub struct DrawFl: u16 {
-        const NONE = 0b00;
-        const BOLD = 0b01;
-        const EMPH = 0b10;
-        const HEADER = 0b11;
+        const NONE = 0b000;
+        const BOLD = 0b001;
+        const EMPH = 0b010;
+        const HEAD = 0b100;
     }
 }
 
@@ -161,7 +161,7 @@ fn draw_content<'a>(
                 y += ih as usize + IMG_SPC;
             }
             Content::Md(md) => {
-                let (_, ny) = draw_node(canvas, &md, lx, ex, lx, y, DrawFl::NONE);
+                let (_, ny) = draw_md(canvas, &md, lx, ex, lx, y, DrawFl::NONE);
                 y = ny;
             }
         }
@@ -170,7 +170,7 @@ fn draw_content<'a>(
     y
 }
 
-fn draw_node(
+fn draw_md(
     canvas: &mut WindowCanvas,
     node: &markdown::mdast::Node,
     lx: usize,
@@ -187,16 +187,34 @@ fn draw_node(
 
     let fnt = if fl.contains(DrawFl::BOLD) {
         &*uf2::FONT_VENICE14
+    } else if fl.contains(DrawFl::HEAD) {
+        //&*uf2::FONT_NEWYORK14
+        &*uf2::FONT_TIMES15
     } else if fl.contains(DrawFl::EMPH) {
-        &*uf2::FONT_ANGELES12
+        //&*uf2::FONT_CREAM12
+        &*uf2::FONT_SHAVIAN12
     } else {
         &*uf2::FONT_GENEVA12
+    };
+
+    let frect = |canvas: &mut WindowCanvas, x: usize, y: usize, w: usize, h: usize, c: u32| {
+        let (r, g, b) = (c >> 16, c >> 8 & 0xFF, c & 0xFF);
+        canvas.set_draw_color(Color::RGB(r as _, g as _, b as _));
+        canvas.fill_rect(Rect::new(x as _, y as _, w as _, h as _)).unwrap();
+        canvas.set_draw_color(Color::RGB(0, 0, 0));
+    };
+
+    #[allow(unused_variables)]
+    let drect = |canvas: &mut WindowCanvas, x: usize, y: usize, w: usize, h: usize| {
+        //canvas.set_draw_color(Color::RGB(186, 187, 186));
+        canvas.draw_rect(Rect::new(x as _, y as _, w as _, h as _)).unwrap();
+        canvas.set_draw_color(Color::RGB(0, 0, 0));
     };
 
     match node {
         N::Root(Root { children, .. }) => {
             for c in children {
-                let (nx, ny) = draw_node(canvas, c, lx, ex, x, y, fl);
+                let (nx, ny) = draw_md(canvas, c, lx, ex, x, y, fl);
                 x = nx;
                 y = ny;
             }
@@ -204,10 +222,11 @@ fn draw_node(
         }
         N::Paragraph(Paragraph { children, .. }) => {
             for c in children {
-                let (nx, ny) = draw_node(canvas, c, lx, ex, x, y, fl);
+                let (nx, ny) = draw_md(canvas, c, lx, ex, x, y, fl);
                 x = nx;
                 y = ny;
             }
+
             x = sx;
             y += 2 * 8;
             y += PAR_PAD;
@@ -215,25 +234,74 @@ fn draw_node(
         N::Heading(Heading {
             children, depth: _, ..
         }) => {
+            //y += PAR_PAD;
+
+            // STYLE 2
+            //const HEAD_HR_W: usize = 24;
+            //rect(canvas, x, y + 6, HEAD_HR_W, 3);
+            //x += HEAD_HR_W + 8;
+
+            // STYLE 1
+            //const HEAD_BOX_PAD_X: usize = 10;
+            //const HEAD_BOX_PAD_Y: usize = 8;
+            let (ox, oy) = (x, y);
+            // x += HEAD_BOX_PAD_X;
+            // y += HEAD_BOX_PAD_Y;
+
+            // STYLE 3
+            // for p in 0..10 {
+            //     frect(canvas, x, oy, 2, 16);
+            //     x += 6 - 6usize.saturating_sub(p / 1).max(1);
+            // }
+            // x += 6;
+
             for c in children {
-                let (nx, ny) = draw_node(canvas, c, lx, ex, x, y, fl | DrawFl::HEADER);
+                let (nx, ny) = draw_md(canvas, c, lx, ex, x, y, fl | DrawFl::HEAD);
                 x = nx;
                 y = ny;
             }
+
+            // STYLE 4
+            frect(canvas, ox - 4, oy - 4, x - ox + 8, fnt.height + 8, 0x232334);
+            frect(canvas, ox - 4, oy + fnt.height + 4, ex - ox, 4, 0x232334);
+            (x, y) = (ox, oy);
+            canvas.set_draw_color(Color::RGB(220, 220, 200));
+            for c in children {
+                let (nx, ny) = draw_md(canvas, c, lx, ex, x, y, fl | DrawFl::HEAD);
+                x = nx;
+                y = ny;
+            }
+            canvas.set_draw_color(Color::RGB(0, 0, 0));
+
+            // STYLE 3
+            // x += 6;
+            // for p in 0..10 {
+            //     frect(canvas, x, oy, 2, 16);
+            //     x += 6usize.saturating_sub(p / 2).max(1);
+            // }
+
+            // STYLE 2
+            //y += PAR_PAD;
+            //drect(canvas, ox, oy, (x - ox) + (HEAD_BOX_PAD_X ), (y - oy) + (HEAD_BOX_PAD_Y * 1));
+
+            // STYLE 1
+            //rect(canvas, x + 8, y + 6, ex - x, 3);
+
             x = sx;
-            y += 5 * 8;
+            y += fnt.height;
             y += PAR_PAD;
+            y += PAR_PAD / 2;
         }
         N::Strong(Strong { children, .. }) => {
             for c in children {
-                let (nx, ny) = draw_node(canvas, c, lx, ex, x, y, fl | DrawFl::BOLD);
+                let (nx, ny) = draw_md(canvas, c, lx, ex, x, y, fl | DrawFl::BOLD);
                 x = nx;
                 y = ny;
             }
         }
         N::Emphasis(Emphasis { children, .. }) => {
             for c in children {
-                let (nx, ny) = draw_node(canvas, c, lx, ex, x, y, fl | DrawFl::EMPH);
+                let (nx, ny) = draw_md(canvas, c, lx, ex, x, y, fl | DrawFl::EMPH);
                 x = nx;
                 y = ny;
             }
@@ -254,18 +322,10 @@ fn draw_node(
                         + uf2::FONT_NEWYORK14.glyphs[0x20].width as usize;
                 } else {
                     let l = &format!("{}) ", start.unwrap_or(1) as usize + i);
-                    uf2::draw(
-                        canvas,
-                        &*uf2::FONT_NEWYORK14,
-                        lx + LST_MAR,
-                        ex,
-                        x + LST_MAR,
-                        y,
-                        l,
-                    );
+                    uf2::draw(canvas, &*uf2::FONT_NEWYORK14, lx + LST_MAR, ex, x + LST_MAR, y, l);
                     o = LST_MAR + uf2::measure(&*uf2::FONT_NEWYORK14, &l);
                 }
-                let (nx, ny) = draw_node(canvas, c, lx + o, ex, x + o, y, fl);
+                let (nx, ny) = draw_md(canvas, c, lx + o, ex, x + o, y, fl);
                 x = nx - o;
                 y = ny;
             }
@@ -274,7 +334,7 @@ fn draw_node(
         }
         N::ListItem(ListItem { children, .. }) => {
             for c in children {
-                let (nx, ny) = draw_node(canvas, c, lx, ex, x, y, fl);
+                let (nx, ny) = draw_md(canvas, c, lx, ex, x, y, fl);
                 x = nx;
                 y = ny - PAR_PAD;
             }
@@ -282,23 +342,15 @@ fn draw_node(
         N::BlockQuote(BlockQuote { children, .. }) => {
             let oldy = sy;
             for c in children {
-                let (nx, ny) = draw_node(canvas, c, lx + 10, ex, x + 10, y, fl);
+                let (nx, ny) = draw_md(canvas, c, lx + 10, ex, x + 10, y, fl);
                 x = nx;
                 y = ny;
             }
             x = lx;
-            let h = (y - oldy - PAR_PAD) as u32;
-            let rect = Rect::new(lx as _, oldy as _, 4, h);
-            canvas.set_draw_color(Color::RGB(186, 187, 186));
-            canvas.fill_rect(rect).unwrap();
-            canvas.set_draw_color(Color::RGB(0, 0, 0));
+            frect(canvas, lx, oldy, 4, y - oldy - PAR_PAD, 0xbabbba);
         }
         N::Text(Text { value, .. }) => {
-            let (nx, ny) = if fl.contains(DrawFl::HEADER) {
-                uf2::draw(canvas, &*uf2::FONT_NEWYORK34, lx, ex, x, y, &value)
-            } else {
-                uf2::draw(canvas, fnt, lx, ex, x, y, &value)
-            };
+            let (nx, ny) = uf2::draw(canvas, fnt, lx, ex, x, y, &value);
             x = nx;
             y = ny;
         }

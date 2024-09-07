@@ -21,7 +21,7 @@ pub fn main() {
     let video_subsystem = sdl_context.video().unwrap();
 
     let window = video_subsystem
-        .window("eileda", 1440, 840) //1440, 810)
+        .window("eileda", 960, 840) //1440, 810)
         .position_centered()
         .build()
         .unwrap();

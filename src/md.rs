@@ -31,10 +31,16 @@ pub fn lex(file: &str) -> Vec<Item> {
     let mut mdbuf = String::new();
 
     for line in data.lines() {
-        if line.starts_with(".") {
+        if line.starts_with(".") && !line.starts_with("..") {
             if mdbuf != "" {
                 items.push(Item::Md(
-                    markdown::to_mdast(&mdbuf, &Default::default()).unwrap(),
+                    markdown::to_mdast(&mdbuf, &markdown::ParseOptions {
+                        constructs: markdown::Constructs {
+                            hard_break_trailing: false,
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    }).unwrap(),
                 ));
                 mdbuf.clear();
             }
@@ -97,7 +103,7 @@ pub fn parse<'a>(
     items: &Vec<Item>,
 ) -> Presentation<'a> {
     let mut p = Presentation {
-        config: GlobalConfig { padding: 0, margin: None },
+        config: GlobalConfig { padding: 16, margin: None },
         slides: Vec::new(),
     };
 
